@@ -1,0 +1,48 @@
+# AWS SAM 템플릿의 버전을 지정합니다.
+AWSTemplateFormatVersion: '2010-09-09'
+# SAM 변환 타입을 지정합니다. 이는 AWS Serverless Application을 의미합니다.
+Transform: AWS::Serverless-2016-10-31
+# 템플릿에 대한 설명을 제공합니다.
+Description: >
+  Streaming GPT4 Response with FastAPI on AWS Lambda
+
+# 전역 설정을 정의합니다. 이 설정은 모든 Lambda 함수에 적용됩니다.
+Globals:
+  Function:
+    Timeout: 300 # Lambda 함수의 타임아웃 시간을 300초(5분)으로 설정합니다.
+
+# 이 템플릿에서 정의할 리소스를 나열합니다.
+Resources:
+  FastAPIFunction: # FastAPI 함수에 대한 정의
+    Type: AWS::Serverless::Function # AWS SAM의 Serverless 함수 타입
+    Properties:
+      PackageType: Image # 함수 패키지 유형을 컨테이너 이미지로 설정
+      MemorySize: 512 # 함수에 할당할 메모리 크기를 512MB로 설정
+      Environment: # 함수의 환경 변수 설정
+        Variables:
+          AWS_LWA_INVOKE_MODE: RESPONSE_STREAM # 응답 스트리밍 모드를 활성화
+      FunctionUrlConfig:
+        AuthType: NONE # 함수 URL 인증 타입을 'NONE'으로 설정 (공개 접근)
+        InvokeMode: RESPONSE_STREAM # 함수 호출 모드를 응답 스트리밍으로 설정
+      Policies: # 함수에 적용할 IAM 정책 설정
+        - Statement:
+            - Sid: BedrockInvokePolicy
+              Effect: Allow
+              Action:
+                - bedrock:InvokeModelWithResponseStream
+              Resource: '*' # 모든 리소스에 대한 접근 허용
+      Tracing: Active # X-Ray 추적을 활성화
+
+    Metadata:
+      Dockerfile: Dockerfile # 사용할 Dockerfile 지정
+      DockerContext: ./app # Docker 컨텍스트 경로 설정
+      DockerTag: v1 # Docker 이미지 태그 설정
+
+# 템플릿의 출력을 정의합니다. 이는 스택 생성 후 정보를 제공합니다.
+Outputs:
+  FastAPIFunctionUrl: # FastAPI 함수의 URL 출력
+    Description: 'Function URL for FastAPI function'
+    Value: !GetAtt FastAPIFunctionUrl.FunctionUrl
+  FastAPIFunction: # FastAPI Lambda 함수의 ARN 출력
+    Description: 'FastAPI Lambda Function ARN'
+    Value: !GetAtt FastAPIFunction.Arn
